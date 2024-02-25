@@ -1,0 +1,17 @@
+[IP_ADDR]
+192.168.1.201
+192.168.1.202
+192.168.1.203
+192.168.1.204
+
+[k8]
+k8master01
+k8node01
+k8node02
+
+[k8_master]
+k8master01
+
+[k8_nodes]
+k8node01
+k8node02

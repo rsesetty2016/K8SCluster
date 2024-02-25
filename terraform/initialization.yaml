@@ -1,0 +1,120 @@
+providers:
+- aws:
+  name: Amazon Web Services
+- azure:
+  name: Microsoft Azure
+- lw:
+  name: Liquid Web
+- prox:
+  name: Proxmox
+- gcp:
+  name: Google Cloud
+
+workspaces:
+- prod:
+  name: Production
+- prep:
+  name: Pre-Production
+- stage:
+  name: Staging
+- uat:
+  name: User Acceptance Testing
+- qual:
+  name: Quality
+- dev:
+  name: Integrated Development Environment
+- udev:
+  name: Unit Development Enviornment (Developers)
+- poc:
+  name: Proof of Concept
+
+applications_types:
+- devops:
+  name: DevOps
+  description: Portal, CI/CD Pipelines etc
+- tools:
+  name: Third part Tools
+  description: Traefik etc.
+- mon:
+  name: Monitoring
+  description: Prometheus etc
+- logs:
+  name: Graylog etc
+
+service_types:
+- web:
+  name: Front End applications
+- app:
+  name: Middleware, APIs etc
+- backend:
+  name: Database etc.
+
+storage_classes:
+- nfs-csi
+
+k8s-applications:
+- traefik:
+- prometheus:
+
+ports: 
+  alertmanager-operated:
+  - ports:
+    - 9093
+    - 9094
+  kubernetes:
+  - ports:
+    - 443
+  prometheus-grafana:
+  - ports:
+    - 80
+  prometheus-kube-prometheus-alertmanager:
+  - ports:
+    - 9093
+    - 8080
+  prometheus-kube-prometheus-operator:
+  - ports:
+    - 443
+  prometheus-kube-prometheus-prometheus:
+  - ports:
+    - 9090
+    - 8080
+  prometheus-kube-state-metrics:
+  - ports:
+    - 8080
+  prometheus-operated:
+  - ports:
+    - 9090
+  prometheus-prometheus-node-exporter:
+  - ports:
+    - 9100
+  kube-dns:
+  - ports:
+    - 53
+    - 9153
+  prometheus-kube-prometheus-coredns:
+  - ports:
+    - 9153
+  prometheus-kube-prometheus-kube-controller-manager:
+  - ports:
+    - 10257
+  prometheus-kube-prometheus-kube-etcd:
+  - ports:
+    - 2381
+  prometheus-kube-prometheus-kube-proxy:
+  - ports:
+    - 10249
+  prometheus-kube-prometheus-kube-scheduler:
+  - ports:
+    - 10259
+  prometheus-kube-prometheus-kubelet:
+  - ports:
+    - 10250
+    - 10255
+    - 4194
+
+  traefik:
+    ports: 
+    - 9000 # traefik
+    - 8000 # web
+    - 8443 # websecure
+    - 9001 # metrics

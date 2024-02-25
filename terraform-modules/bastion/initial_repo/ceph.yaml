@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Secret
+metadata:
+   name: ceph-secret
+data:
+   key: AQAKmEBjOPkxJBAArpFzRIZmRT7jG1uNGn399Q==
+

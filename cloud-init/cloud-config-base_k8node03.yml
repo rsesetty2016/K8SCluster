@@ -1,0 +1,98 @@
+#cloud-config file
+package_update: true
+package_upgrade: true
+
+# APT fails to acquire GPG keys if package dirmngr is missing
+bootcmd:
+  - [ cloud-init-per, once, dirmngr-aptupdate, apt-get, update ]
+  - [ cloud-init-per, once, dirmngr-aptinstall, apt-get, install, dirmngr, -y ]
+  - [ cloud-init-per, once, dirmngr-aptinstall, apt-get, install, gnupg2, -y ]
+  - sed -i "s/#\$nrconf{kernelhints} = -1;/\$nrconf{kernelhints} = -1;/g" /etc/needrestart/needrestart.conf # Disable pink screen for kernel upgrade prompt
+  - sed -i "s/#\$nrconf{restart} = 'i';/\$nrconf{restart} = 'a';/g" /etc/needrestart/needrestart.conf # Disable pink screen to restart services
+  - apt autoremove -y
+
+
+apt:
+  sources:
+    docker.list:
+      source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+      
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - apache2-utils
+  - jq
+  - curl
+  - nfs-common
+  - net-tools
+  - git
+  - xterm
+  - pwgen
+  - sshpass
+  - software-properties-common
+  - acl # This is required to allow Ansible to run as unprivileged user
+  - docker.io
+  # - containerd.io
+
+
+users:
+- name: proxuser
+  groups: sudo
+  shell: /bin/bash
+  sudo: ALL=(ALL) NOPASSWD:ALL
+  ssh_authorized_keys:
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDabSfnUSs6iUcySfQe6p5iUQ85GlZkvl6OW6Rjqtg+1Q87d1syJkqZsbgRH5xNZ0IJ6ZKhHy0uEQ2RhMkMZS+Jn/7qRzYRmgSDM+A+zgcXOGKo3rxiXG0Men9nDLCY1C3gmnnQS4AcoefofmtKMZE2y/db9sybjTdlg6Zxrgi3u1MSxFUJtHfeGT9yxbsRIbczpwUBbQQ7G2Ix+Rt3EnL/eHTCrt5aRZJME3LEppmHKYqaNLrwUa4tEOlcKiIiQuj6bHVqGU8y68MEfLs26gd3lTwoUQTv1EcbFvzyhuViDFied25OlVqLjnQSejCQNTLnybIyNa3ecCadn2MuxaLUTaf6i+nmaHeONibjtF38u+/dYNZgyiULP+xo3w1x9yLVQmzHCsHNxsLQ8cSsbnqy+G4XgkkLQvJrIEUe/hSDRtIdUwpJSWnk72LPyUsSZns2u/0SuP9wB+sPMGVtLwBdNn2hGDXNYUtCTQVk2BmM99AzxN9OVNHlbwM9QTd0xJM= sbb@sbb-ThinkPad-P52
+
+
+- name: svc_ansible
+  groups: sudo
+  shell: /bin/bash
+  homedir: /projects/ansible
+  lock_passwd: false
+  passwd: $6$lPpDEDU51JWYnXn.$K7KxY8AN3CtVN85R9xytmXG9nKjCa0YUtag69ep4PXWcGN6fF21nOjhpP7S5AMo7GxIKOMW7m7zgnwO8MhMwc.
+  sudo: ALL=(ALL) NOPASSWD:ALL
+  ssh_authorized_keys:
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDabSfnUSs6iUcySfQe6p5iUQ85GlZkvl6OW6Rjqtg+1Q87d1syJkqZsbgRH5xNZ0IJ6ZKhHy0uEQ2RhMkMZS+Jn/7qRzYRmgSDM+A+zgcXOGKo3rxiXG0Men9nDLCY1C3gmnnQS4AcoefofmtKMZE2y/db9sybjTdlg6Zxrgi3u1MSxFUJtHfeGT9yxbsRIbczpwUBbQQ7G2Ix+Rt3EnL/eHTCrt5aRZJME3LEppmHKYqaNLrwUa4tEOlcKiIiQuj6bHVqGU8y68MEfLs26gd3lTwoUQTv1EcbFvzyhuViDFied25OlVqLjnQSejCQNTLnybIyNa3ecCadn2MuxaLUTaf6i+nmaHeONibjtF38u+/dYNZgyiULP+xo3w1x9yLVQmzHCsHNxsLQ8cSsbnqy+G4XgkkLQvJrIEUe/hSDRtIdUwpJSWnk72LPyUsSZns2u/0SuP9wB+sPMGVtLwBdNn2hGDXNYUtCTQVk2BmM99AzxN9OVNHlbwM9QTd0xJM= sbb@sbb-ThinkPad-P52
+
+
+- name: kube_user
+  groups: sudo
+  shell: /bin/bash
+  lock_passwd: false
+  passwd: $6$lPpDEDU51JWYnXn.$K7KxY8AN3CtVN85R9xytmXG9nKjCa0YUtag69ep4PXWcGN6fF21nOjhpP7S5AMo7GxIKOMW7m7zgnwO8MhMwc.
+  sudo: ALL=(ALL) NOPASSWD:ALL
+  ssh_authorized_keys:
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDabSfnUSs6iUcySfQe6p5iUQ85GlZkvl6OW6Rjqtg+1Q87d1syJkqZsbgRH5xNZ0IJ6ZKhHy0uEQ2RhMkMZS+Jn/7qRzYRmgSDM+A+zgcXOGKo3rxiXG0Men9nDLCY1C3gmnnQS4AcoefofmtKMZE2y/db9sybjTdlg6Zxrgi3u1MSxFUJtHfeGT9yxbsRIbczpwUBbQQ7G2Ix+Rt3EnL/eHTCrt5aRZJME3LEppmHKYqaNLrwUa4tEOlcKiIiQuj6bHVqGU8y68MEfLs26gd3lTwoUQTv1EcbFvzyhuViDFied25OlVqLjnQSejCQNTLnybIyNa3ecCadn2MuxaLUTaf6i+nmaHeONibjtF38u+/dYNZgyiULP+xo3w1x9yLVQmzHCsHNxsLQ8cSsbnqy+G4XgkkLQvJrIEUe/hSDRtIdUwpJSWnk72LPyUsSZns2u/0SuP9wB+sPMGVtLwBdNn2hGDXNYUtCTQVk2BmM99AzxN9OVNHlbwM9QTd0xJM= sbb@sbb-ThinkPad-P52
+
+
+groups: 
+  - docker: ["proxuser", "svc_ansible"]    
+
+preserve_hostname: false
+manage_etc_hosts: false
+fqdn: k8node03.int.vaanj.com
+setpassword:
+  - &passwd |
+    echo 'proxuser:T3st123!' | chpasswd
+    systemctl enable qemu-guest-agent
+
+
+runcmd:
+  - [ sh, -c, *passwd]
+  - modprobe br_netfilter # Load br_netfilter module.
+  - modprobe overlay
+  - "[ ! -d /etc/apt/keyrings ] && mkdir /etc/apt/keyrings"
+  - sed -i "s/#\$nrconf{kernelhints} = -1;/\$nrconf{kernelhints} = -1;/g" /etc/needrestart/needrestart.conf # Disable pink screen for kernel upgrade prompt
+  - sed -i "s/#\$nrconf{restart} = 'i';/\$nrconf{restart} = 'a';/g" /etc/needrestart/needrestart.conf # Disable pink screen to restart services
+  # - sysctl --system # Reload settings from all system configuration files to take iptables configuration
+  - mkdir -p /etc/containerd
+  - containerd config default > /etc/containerd/config.toml
+  - sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml  
+  - systemctl restart containerd
+  - systemctl enable docker
+  - mkdir -p /nfs/kubernetes
+  - echo "192.168.1.47:/DATA-ZFS-1/kubernetes /nfs/kubernetes nfs rw,bg,soft,intr,nosuid 0 0" >> /etc/fstab
+  - mount -a
+

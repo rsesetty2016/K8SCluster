@@ -1,0 +1,26 @@
+- hosts: IP_ADDR
+  gather_facts: no
+  tasks:
+      - name: Check if it is already updated
+        shell: "grep '^# Created during host deployment' /etc/hosts"
+        register: check_etc_hosts
+        ignore_errors: yes
+
+      - name: Update /etc/hosts file
+        shell: "cat /tmp/hosts.txt >> /etc/hosts"
+        register: hosts
+        become: yes
+        become_user: root
+        become_method: sudo
+        when: check_etc_hosts.rc == 1
+
+      - name: delete temporary file
+        file:
+            path: /tmp/hosts.txt
+            state: absent
+        become: yes
+        become_user: root
+        become_method: sudo
+        ignore_errors: yes
+
+

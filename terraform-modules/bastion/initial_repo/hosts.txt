@@ -1,0 +1,4 @@
+192.168.1.100	ansible k8console gitlab
+192.168.1.110   k8master01
+192.168.1.111   k8node01
+192.168.1.112   k8node02

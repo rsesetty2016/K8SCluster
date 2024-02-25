@@ -1,0 +1,13 @@
+{
+  "name": "ceph-pv",
+  "storage": "100Gi",
+  "accessModes": ["ReadWriteMany"],
+  "monitors": ["192.168.1.47:6789"],
+  "pool": "pv_data",
+  "image": "cephfs",
+  "user": "admin",
+  "secret": "ceph-key-secret",
+  "fsType": "ext4",
+  "readOnly": "false"
+}
+

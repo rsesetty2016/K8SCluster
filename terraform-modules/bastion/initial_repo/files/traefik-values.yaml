@@ -1,0 +1,62 @@
+ingressRoute:
+  dashboard:
+    enabled: true
+    annotations: {}
+    labels: {}
+    matchRule: PathPrefix(`/dashboard`) || PathPrefix(`/api`)
+    entryPoints: ["traefik"]
+    middlewares: []
+    tls: {}
+  healthcheck:
+    enabled: false
+    annotations: {}
+    labels: {}
+    matchRule: PathPrefix(`/ping`)
+    entryPoints: ["traefik"]
+    middlewares: []
+    tls: {}
+
+
+ports:
+  traefik:
+    port: 9000
+    expose: true
+    exposedPort: 9000
+    protocol: TCP
+  web:
+    port: 8000
+    expose: true
+    exposedPort: 80
+    protocol: TCP
+  websecure:
+    port: 8443
+    expose: true
+    exposedPort: 443
+    protocol: TCP
+    http3:
+      enabled: false
+    tls:
+      enabled: true
+      options: ""
+      certResolver: ""
+      domains: []
+      # - main: example.com
+      #   sans:
+      #     - foo.example.com
+      #     - bar.example.com
+    middlewares: []
+  metrics:
+    port: 9001
+    expose: true
+    exposedPort: 9001
+    protocol: TCP
+
+persistence:
+  enabled: true
+  name: ssl-certs
+  accessMode: ReadWriteOnce
+  size: 128Mi
+  storageClass: nfs-csi
+  path: /ssl-certs
+  annotations: {}
+

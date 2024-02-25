@@ -1,0 +1,217 @@
+- hosts: k8_master
+#- hosts: dummy01
+  become: yes
+  gather_facts: no
+  tasks:
+      - name: Initiate cluster
+        shell: ". /tmp/k8_init.sh"
+
+      - name: Create .kube directory
+        file:
+            path: $HOME/.kube
+            state: directory
+            mode: 0755
+        become: yes
+        become_user: kube_user
+
+      - name: Create a temp file
+        copy:
+            src: /etc/kubernetes/admin.conf
+            dest: /tmp/x.conf
+            mode: '555'
+            remote_src: yes
+
+      - name: copy conf files to user kube config
+        copy:
+          #src: /etc/kubernetes/admin.conf
+            src: /tmp/x.conf
+            dest: $HOME/.kube/config
+            remote_src: yes
+            owner: kube_user
+            mode: '600'
+        become: yes
+        become_user: kube_user
+
+      - name: Remove temp file
+        file:
+            path: /tmp/x.conf
+            state: absent
+
+      # - name: install network operator
+      #   shell: kubectl create -f https://projectcalico.docs.tigera.io/manifests/tigera-operator.yaml
+      #   args:
+      #       chdir: $HOME
+
+      # - name: install pod operator custom resources
+      #   shell: kubectl create -f https://projectcalico.docs.tigera.io/manifests/custom-resources.yaml
+      #   args:
+      #       chdir: $HOME
+
+      - name: install pod network
+        shell: kubectl create -f https://docs.projectcalico.org/manifests/calico.yaml
+        args:
+            chdir: $HOME
+        become: yes
+        become_user: kube_user
+
+      - name: get token
+        shell: "kubeadm token create --print-join-command"
+        register: k8_join
+        become: yes
+        become_user: kube_user
+
+      - name: Display token
+        debug:
+           msg: "{{k8_join.stdout_lines[0]}}"
+        become: yes
+        become_user: kube_user
+
+      - name: Display token
+        local_action: copy content="{{ k8_join.stdout_lines[0] }}" dest="/tmp/k8_join.sh" mode=0777 
+
+- hosts: k8_nodes
+  gather_facts: no
+  tasks:
+      - name: Copy temp file to nodes (JOIN command)
+        become: yes
+        copy:
+            src: /tmp/k8_join.sh
+            dest: /tmp/k8_join.sh
+            mode: 0777
+
+      - name: Join the cluster
+        command: sh /tmp/k8_join.sh
+        register: is_join_successful
+        become: yes
+        become_user: root
+        become_method: sudo
+
+- hosts: k8_master
+  become: yes
+  gather_facts: yes
+  vars_files: 
+    - "vars/k8s.vars"
+  tasks:
+      - name: Assing role to nodes
+        shell: "kubectl label node {{ item }} node-role.kubernetes.io/worker=worker"
+        become: yes
+        become_user: kube_user
+        ignore_errors: yes
+        with_items: "{{ groups.k8_nodes }}"
+
+      - name: Create Namespaces
+        shell: "kubectl create ns {{ item }}"
+        with_items:
+        - "{{ namespaces }}"
+        become: yes
+        become_user: kube_user
+        ignore_errors: yes        
+
+      - name: Install helm
+        package: 
+          name: helm
+          state: present
+
+      - name: Add csi driver helm repo
+        shell: "helm repo add csi-driver-nfs https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts"
+        become: yes
+        become_user: kube_user
+
+      - name: Add prometheus helm repo
+        shell: "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts"
+        become: yes
+        become_user: kube_user
+
+      - name: Add traefik helm repo
+        shell: "helm repo add traefik https://helm.traefik.io/traefik"
+        become: yes
+        become_user: kube_user
+
+      - name: Add cert-manager helm repo
+        shell: "helm repo add jetstack https://charts.jetstack.io"
+        become: yes
+        become_user: kube_user
+
+      - name: Add Kyverno helm repo
+        shell: "helm repo add kyverno https://kyverno.github.io/kyverno/"
+        become: yes
+        become_user: kube_user
+
+      - name: Add cert-manager helm repo
+        shell: "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts"
+        become: yes
+        become_user: kube_user
+
+      - name: Update helm repo
+        shell: "helm repo update"
+        become: yes
+        become_user: kube_user
+
+      - name: Install NFS CSI Driver
+        shell: "helm install csi-driver-nfs csi-driver-nfs/csi-driver-nfs"
+        become: yes
+        become_user: kube_user 
+
+      - name: Create PV (NFS)
+        shell: "kubectl create -f /tmp/files/nfs-pv.yaml"
+        become: yes
+        become_user: kube_user        
+
+      # - name: Create a temp file
+      #   shell: cat /tmp/files/ceph_key.txt
+      #   register: ceph_key
+
+      # - name: Create a ceph secret key
+      #   shell: "kubectl create secret generic ceph-key-secret --from-literal=key={{ ceph_key.stdout_lines[0] }}"
+      #   become: yes
+      #   become_user: kube_user
+
+      # - name: Remove temp file
+      #   file:
+      #     path: /tmp/files/ceph_key.txt
+      #     state: absent
+
+      # - name: Create PV (CEPH)
+      #   shell: "kubectl create -f /tmp/files/ceph-pv.yaml"
+      #   become: yes
+      #   become_user: kube_user
+
+      - name: Install Prometheus Stack
+        shell: "helm install --values=/tmp/files/prometheus-values.yaml prometheus prometheus-community/kube-prometheus-stack -n tools"
+        become: yes
+        become_user: kube_user
+
+      - name: Install Traefik 
+        shell: "helm install --values=/tmp/files/traefik-values.yaml traefik traefik/traefik -n tools"
+        become: yes
+        become_user: kube_user
+
+      # - name: Install Cert-manager resources (includes CRDs as well)
+      #   shell: "kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.6.3/cert-manager.crds.yaml"
+      #   become: yes
+      #   become_user: kube_user
+
+      - name: Patch Traefik for external IP
+        shell: "kubectl patch svc -n tools traefik -p '{\"spec\":{\"externalIPs\":[\"{{ ansible_default_ipv4.address }}\"]}}'"
+        become: yes
+        become_user: kube_user
+
+      - name: Create IngressRoutes
+        shell: "kubectl create -f /tmp/files/ingressRoutes.yaml"
+        become: yes
+        become_user: kube_user  
+
+      - name: Install Kyverno 
+        shell: "helm install kyverno kyverno/kyverno -n tools"
+        become: yes
+        become_user: kube_user
+
+      - name: Disallow creating resources in default namespace
+        shell: "kubectl create -f /tmp/files/policy_disallow_default_namespace.yaml"
+        become: yes
+        become_user: kube_user  
+
+      - name: Deploy Klum for user management
+        shell: "kubectl create -f /tmp/files/klub_user_management.yaml"
+        become: yes
+        become_user: kube_user  
